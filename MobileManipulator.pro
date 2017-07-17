@@ -7,6 +7,7 @@
 QT       += core gui
 QT       += sql
 QT       += network
+QT       += serialport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -18,18 +19,18 @@ SOURCES += main.cpp\
         QRoundProgressBar.cpp \
     authentication.cpp \
     kinematicsolution.cpp \
-    mythread.cpp
+    mythread.cpp \
+    communication.cpp
 
 HEADERS  += mainwindow.h \
          QRoundProgressBar.h \
     databaseconnection.h \
     authentication.h \
-    linear_Interpolation.h \
-    add.h \
     kinematicsolution.h \
     inverse.h \
     lineInterpolation.h \
-    mythread.h
+    mythread.h \
+    communication.h
 
 
 RESOURCES += \
@@ -48,8 +49,6 @@ FORMS +=
 
 INCLUDEPATH += C:\Study_SoftWare\Matlab\R2014a\extern\include
 
-LIBS += C:/Users/yanglei/Desktop/MobileManipulator/linear_Interpolation.lib
-LIBS += C:/Users/yanglei/Desktop/MobileManipulator/add.lib
 LIBS += C:/Users/yanglei/Desktop/MobileManipulator/inverse.lib
 LIBS += C:/Users/yanglei/Desktop/MobileManipulator/lineInterpolation.lib
 

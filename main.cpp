@@ -1,8 +1,6 @@
 ﻿#include "mainwindow.h"
 #include <QApplication>
 #include <authentication.h>
-#include "linear_Interpolation.h"
-#include "add.h"
 #include <iostream>
 
 using namespace std;

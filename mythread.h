@@ -3,6 +3,7 @@
 #include <QThread>
 
 /**  **********************基于单件设计模式 *************************/
+/**  实时采集系统各关节位置信息  **/
 
 class MyThread : public QThread
 {
@@ -20,7 +21,7 @@ public:
 
     static void destory()
     {
-        if(singleton == 0)
+        if(singleton != 0)
         {
             delete singleton;
             singleton = 0;
@@ -34,6 +35,7 @@ private:
     MyThread();
     static MyThread* singleton;
     volatile bool stopped;
+    QByteArray receivedArray;
 };
 
 #endif // MYTHREAD_H

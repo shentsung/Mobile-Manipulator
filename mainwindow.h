@@ -15,6 +15,7 @@
 #include <QDoubleSpinBox>
 #include <QRadioButton>
 #include <QSlider>
+#include <QComboBox>
 
 #include <QHBoxLayout>
 #include <QStackedWidget>
@@ -38,6 +39,9 @@
 
 #include <QFile>
 #include <QTextStream>
+
+#include <QSerialPort>
+#include <QSerialPortInfo>
 
 #include "kinematicsolution.h"
 
@@ -304,7 +308,7 @@ private:
     QTextEdit *helpTextEdit;
     QLabel *helpTitle;
     
-    //通信设置页面控件定义       两部分：KUKA机械臂通讯(TCP/IP)    AGV通讯(暂时未知)
+    /** 通信模块 **/      //两部分：KUKA机械臂通讯(TCP/IP)    AGV通讯(暂时未知)
 
     //布局控件
     QLabel *communicationTitleLabel;
@@ -316,11 +320,24 @@ private:
     QLineEdit *ipLineEdit;
     QLabel *portLabel;
     QLineEdit *portLineEdit;
-    QPushButton *connectBtn;
-    QPushButton *resetBtn;
 
     //AGV全向车
     QGroupBox *agvGroupBox;
+
+    QLabel *serialPortLabel;
+    QLabel *buadRateLabel;
+    QLabel *dataBitsLabel;
+    QLabel *stopBitsLabel;
+    QLabel *parityLabel;
+
+    QComboBox *serialPortComboBox;
+    QComboBox *buadRateComboBox;
+    QComboBox *dataBitsComboBox;
+    QComboBox *stopBitsComboBox;
+    QComboBox *parityComboBox;
+
+    QPushButton *connectBtn;
+    QPushButton *resetBtn;
 
     //历史记录访问页面
     QLabel *historyTitle;
@@ -331,7 +348,7 @@ private:
 
 /********************************通信模块***********************************/
 private:  
-    //kukaRobot Tcp通信
+    // kukaRobot Tcp通信
     QTcpSocket *tcpSocket;
     QHostAddress ipAddress;
     int portNum;
@@ -339,6 +356,10 @@ private:
     QString receiveMsg;
     quint16 receiveSize;
     QString sendMsg;
+
+
+    // 485总线通信
+    QList<QSerialPortInfo> portList;
 
 private slots:
     //通信相关槽函数定义
@@ -431,6 +452,17 @@ private slots:
     // 界面定时更新槽函数
     void updateInterface();
 
+/**  全局变量-控制系统通信相关  **/
+public:
+    // 485总线通信参数
+    static QString portName;
+    static int buadRate;
+    static int dataBitsIndex;
+    static int parityIndex;
+    static int stopBitsIndex;
+
+    // 系统通信状态
+    static bool communicationState;
 };
 
 #endif // MAINWINDOW_H

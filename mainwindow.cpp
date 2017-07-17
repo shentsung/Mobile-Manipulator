@@ -38,16 +38,25 @@
 #include <QFileDialog>
 #include <QDir>
 
-#include "linear_Interpolation.h"
-#include "add.h"
 #include "kinematicsolution.h"
 
 #include "mythread.h"
+
+#include "communication.h"
 
 // 编译时未报错，但生成的程序中文乱码
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
 #endif
+
+QString MainWindow::portName = "COM1";
+int MainWindow::buadRate = 9600;
+int MainWindow::dataBitsIndex = 3;
+int MainWindow::parityIndex = 2;
+int MainWindow::stopBitsIndex = 0;
+
+bool MainWindow::communicationState = false;
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent)
@@ -102,9 +111,6 @@ MainWindow::~MainWindow()
 {
     sendFileInstance->close();
     receiveFileInstance->close();
-
-    // matlab 函数终止
-    linear_InterpolationTerminate();
 
     // 终止线程
     MyThread::getInstance()->stop();
@@ -461,35 +467,158 @@ void MainWindow::menuPageInitialize()
      resetBtn->setFont(buttonFont);
      resetBtn->setFixedSize(120, 35);
 
-     QHBoxLayout *kukaBtnLayout = new QHBoxLayout();
-     kukaBtnLayout->addSpacing(140);
-     kukaBtnLayout->addWidget(connectBtn);
-     kukaBtnLayout->addWidget(resetBtn);
-     kukaBtnLayout->addSpacing(140);
-
-
      kukaGroupBox = new QGroupBox();
      kukaGroupBox->setTitle(tr("六自由度机械臂"));
-     kukaGroupBox->setFixedSize(700, 200);
+     kukaGroupBox->setFixedSize(700, 130);
      kukaGroupBox->setStyleSheet("QGroupBox{border: 1px solid #ffffff; border-radius:3px; background-color: rgba(255, 255, 255, 0);}");
      QVBoxLayout *kukaGroupBoxLayout = new QVBoxLayout();
      kukaGroupBoxLayout->addLayout(ipLayout);
      kukaGroupBoxLayout->addLayout(portLayout);
      kukaGroupBoxLayout->addSpacing(8);
-     kukaGroupBoxLayout->addLayout(kukaBtnLayout);
      kukaGroupBox->setLayout(kukaGroupBoxLayout);
 
 
      //AGV通信参数
      agvGroupBox = new QGroupBox();
      agvGroupBox->setTitle(tr("全向车"));
-     agvGroupBox->setFixedSize(700, 200);
+     agvGroupBox->setFixedSize(700, 160);
      agvGroupBox->setStyleSheet("QGroupBox{border: 1px solid #ffffff; border-radius:3px; background-color: rgba(255, 255, 255, 0);}");
 
+     serialPortLabel = new QLabel(tr("端口号:"));
+     buadRateLabel = new QLabel(tr("波特率:"));
+     dataBitsLabel = new QLabel(tr("数据位:"));
+     stopBitsLabel = new QLabel(tr("停止位:"));
+     parityLabel = new QLabel(tr("校验位:"));
+
+     serialPortLabel->setFont(labelFont);
+     buadRateLabel->setFont(labelFont);
+     dataBitsLabel->setFont(labelFont);
+     stopBitsLabel->setFont(labelFont);
+     parityLabel->setFont(labelFont);
+
+     serialPortComboBox = new QComboBox();
+     buadRateComboBox = new QComboBox();
+     dataBitsComboBox = new QComboBox();
+     stopBitsComboBox = new QComboBox();
+     parityComboBox = new QComboBox();
+
+     serialPortComboBox->setFont(lineEditFont);
+     buadRateComboBox->setFont(lineEditFont);
+     dataBitsComboBox->setFont(lineEditFont);
+     stopBitsComboBox->setFont(lineEditFont);
+     parityComboBox->setFont(lineEditFont);
+
+     portList = QSerialPortInfo::availablePorts();
+     for(int i=0; i<portList.size(); i++)
+     {
+        serialPortComboBox->addItem(portList.at(i).portName());
+     }
+
+     QStringList buadRateList;
+     buadRateList << QString(tr("1200"))
+                  << QString(tr("2400"))
+                  << QString(tr("4800"))
+                  << QString(tr("9600"))
+                  << QString(tr("19200"))
+                  << QString(tr("38400"))
+                  << QString(tr("56000"))
+                  << QString(tr("57600"))
+                  << QString(tr("115200"))
+                  << QString(tr("128000"))
+                  << QString(tr("256000"));
+     buadRateComboBox->addItems(buadRateList);
+
+     QStringList dataBitsList;
+     dataBitsList << QString(tr("5"))
+                  << QString(tr("6"))
+                  << QString(tr("7"))
+                  << QString(tr("8"));
+     dataBitsComboBox->addItems(dataBitsList);
+
+     QStringList stopBitsList;
+     stopBitsList << QString(tr("NONE"))
+                  << QString(tr("ODD"))
+                  << QString(tr("EVEN"))
+                  << QString(tr("MARK"))
+                  << QString(tr("SPACE"));
+     stopBitsComboBox->addItems(stopBitsList);
+
+     QStringList parityList;
+     parityList << QString(tr("1"))
+                  << QString(tr("1.5"))
+                  << QString(tr("2"));
+     parityComboBox->addItems(parityList);
+
+     serialPortComboBox->setFixedWidth(130);
+     buadRateComboBox->setFixedWidth(130);
+     dataBitsComboBox->setFixedWidth(130);
+     stopBitsComboBox->setFixedWidth(130);
+     parityComboBox->setFixedWidth(130);
+
+     serialPortComboBox->setCurrentIndex(0);
+     buadRateComboBox->setCurrentIndex(3);
+     dataBitsComboBox->setCurrentIndex(3);
+     stopBitsComboBox->setCurrentIndex(2);
+     parityComboBox->setCurrentIndex(0);
+
+     QHBoxLayout *serialPortLayout = new QHBoxLayout();
+     serialPortLayout->addSpacing(150);
+     serialPortLayout->addWidget(serialPortLabel);
+     serialPortLayout->addSpacing(5);
+     serialPortLayout->addWidget(serialPortComboBox);
+     serialPortLayout->addSpacing(150);
+     QHBoxLayout *buadRateLayout = new QHBoxLayout();
+     buadRateLayout->addSpacing(150);
+     buadRateLayout->addWidget(buadRateLabel);
+     buadRateLayout->addSpacing(5);
+     buadRateLayout->addWidget(buadRateComboBox);
+     buadRateLayout->addSpacing(150);
+     QHBoxLayout *dataBitsLayout = new QHBoxLayout();
+     dataBitsLayout->addSpacing(150);
+     dataBitsLayout->addWidget(dataBitsLabel);
+     dataBitsLayout->addSpacing(5);
+     dataBitsLayout->addWidget(dataBitsComboBox);
+     dataBitsLayout->addSpacing(150);
+     QHBoxLayout *stopBitsLayout = new QHBoxLayout();
+     stopBitsLayout->addSpacing(150);
+     stopBitsLayout->addWidget(stopBitsLabel);
+     stopBitsLayout->addSpacing(5);
+     stopBitsLayout->addWidget(stopBitsComboBox);
+     stopBitsLayout->addSpacing(150);
+     QHBoxLayout *parityLayout = new QHBoxLayout();
+     parityLayout->addSpacing(150);
+     parityLayout->addWidget(parityLabel);
+     parityLayout->addSpacing(5);
+     parityLayout->addWidget(parityComboBox);
+     parityLayout->addSpacing(150);
+
+     QVBoxLayout *agvLayout_V1 = new QVBoxLayout();
+     agvLayout_V1->addLayout(serialPortLayout);
+     agvLayout_V1->addLayout(buadRateLayout);
+     agvLayout_V1->addLayout(dataBitsLayout);
+     QVBoxLayout *agvLayout_V2 = new QVBoxLayout();
+     agvLayout_V2->addLayout(stopBitsLayout);
+     agvLayout_V2->addLayout(parityLayout);
+
+     QHBoxLayout *agvLayout = new QHBoxLayout();
+     agvLayout->addSpacing(20);
+     agvLayout->addLayout(agvLayout_V1);
+     agvLayout->addLayout(agvLayout_V2);
+     agvLayout->addSpacing(80);
+
+     agvGroupBox->setLayout(agvLayout);
+
+     QHBoxLayout *kukaBtnLayout = new QHBoxLayout();
+     kukaBtnLayout->addSpacing(140);
+     kukaBtnLayout->addWidget(connectBtn);
+     kukaBtnLayout->addWidget(resetBtn);
+     kukaBtnLayout->addSpacing(140);
 
      CommunicationGroupBoxLayout->addWidget(kukaGroupBox);
      CommunicationGroupBoxLayout->addSpacing(30);
      CommunicationGroupBoxLayout->addWidget(agvGroupBox);
+     CommunicationGroupBoxLayout->addSpacing(30);
+     CommunicationGroupBoxLayout->addLayout(kukaBtnLayout);
      CommunicationGroupBox->setLayout(CommunicationGroupBoxLayout);
 
 
@@ -1554,34 +1683,36 @@ void MainWindow::connectBtn_Clicked()
     portNum = portLineEdit->text().toInt();
     tcpSocket->connectToHost(QHostAddress::LocalHost,portNum);
     */
+    MainWindow::portName = serialPortComboBox->currentText();
+    MainWindow::buadRate = buadRateComboBox->currentText().toInt();
+    MainWindow::dataBitsIndex = dataBitsComboBox->currentIndex();
+    MainWindow::parityIndex = stopBitsComboBox->currentIndex();
+    MainWindow::stopBitsIndex = parityComboBox->currentIndex();
 
-    // matlab 调用测试
-    /*
-    mwArray x(1, 1, mxDOUBLE_CLASS);
-    mwArray y(1, 1, mxDOUBLE_CLASS);
-    mwArray z(1, 1, mxDOUBLE_CLASS);
-    mwArray wx(1, 1, mxDOUBLE_CLASS);
-    mwArray wy(1, 1, mxDOUBLE_CLASS);
-    mwArray wz(1, 1, mxDOUBLE_CLASS);
-
-    x(1, 1) = 0.3;
-    y(1, 1) = 0.3;
-    z(1, 1) = 0.3;
-    wx(1, 1) = 0;
-    wy(1, 1) = 1.74;
-    wz(1, 1) = 0;
-
-    mwArray dataS(6, 100, mxDOUBLE_CLASS);
-
-    //输出参数个数,输出参数,输入参数。
-    linear_Interpolation(1,dataS, x, y, z, wx, wy, wz);
-    */
-
-    straightLine();
+    MainWindow::communicationState = Communication::getInstance()->SerialInit();
+    qDebug() << MainWindow::communicationState;
 }
 
 void MainWindow::resetBtn_Clicked()
 {
+    serialPortComboBox->setCurrentIndex(0);
+    buadRateComboBox->setCurrentIndex(3);
+    dataBitsComboBox->setCurrentIndex(3);
+    stopBitsComboBox->setCurrentIndex(2);
+    parityComboBox->setCurrentIndex(0);
+
+    MainWindow::portName = serialPortComboBox->currentText();
+    MainWindow::buadRate = buadRateComboBox->currentText().toInt();
+    MainWindow::dataBitsIndex = dataBitsComboBox->currentIndex();
+    MainWindow::parityIndex = stopBitsComboBox->currentIndex();
+    MainWindow::stopBitsIndex = parityComboBox->currentIndex();
+
+    if(MainWindow::communicationState)
+    {
+        Communication::getInstance()->SerialClose();
+        MainWindow::communicationState = false;
+    }
+
 
     tcpSocket->abort();
     ipLineEdit->setText("192.168.1.24");
