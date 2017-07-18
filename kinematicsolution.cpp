@@ -3,15 +3,19 @@
 #include "lineInterpolation.h"
 #include <qDebug>
 
+KinematicSolution* KinematicSolution::singleton = 0;
+
 // 构造函数定义
 KinematicSolution::KinematicSolution()
 {
 
     // 函数初始化
     if(!inverseInitialize())
-        qDebug()<< "initialize inverseFun failed";
+        qDebug() << "initialize inverseFun failed";
     if(!lineInterpolationInitialize())
-         qDebug()<< "initialize lineInterpolationFun failed";
+         qDebug() << "initialize lineInterpolationFun failed";
+    if(!forwardInitialize())
+        qDebug() << "initialize forwardFun failed";
 }
 // 析构函数定义
 KinematicSolution::~KinematicSolution()
@@ -24,7 +28,7 @@ KinematicSolution::~KinematicSolution()
 
 // terminalPos 数组：x y z wx wy wz
 // jointValue  数组：x y th theta1 theta2 theta3 theta4 theta5 theta6
-int KinematicSolution::inverseFun(/*in*/double* terminalPos, double* jointValueCur, /*out*/double* jointValueObj)
+int KinematicSolution::inverseFun(/*in*/const double* terminalPos, const double* jointValueCur, /*out*/double* jointValueObj)
 {
 
     // terminalPos
@@ -74,7 +78,40 @@ int KinematicSolution::inverseFun(/*in*/double* terminalPos, double* jointValueC
     return 0;
 }
 
-int KinematicSolution::lineInterpolationFun(/*in*/double* deltaTerminalPos, double* jointValueCur, /*out*/double* jointValueArray)
+// jointValueCur  数组：x y th theta1 theta2 theta3 theta4 theta5 theta6
+// terminalPos 数组：x y z wx wy wz    末端位姿
+int KinematicSolution::forwardFun(/*in*/const double *jointValueCur, /*out*/double *terminalPos)
+{
+    // jontValueCur
+    mwArray x(1,1,mxDOUBLE_CLASS);
+    mwArray y(1,1,mxDOUBLE_CLASS);
+    mwArray th(1,1,mxDOUBLE_CLASS);
+    mwArray theta1(1,1,mxDOUBLE_CLASS);
+    mwArray theta2(1,1,mxDOUBLE_CLASS);
+    mwArray theta3(1,1,mxDOUBLE_CLASS);
+    mwArray theta4(1,1,mxDOUBLE_CLASS);
+    mwArray theta5(1,1,mxDOUBLE_CLASS);
+    mwArray theta6(1,1,mxDOUBLE_CLASS);
+
+    x(1, 1) = jointValueCur[0];
+    y(1, 1) = jointValueCur[1];
+    th(1, 1) = jointValueCur[2];
+    theta1(1, 1) = jointValueCur[3];
+    theta2(1, 1) = jointValueCur[4];
+    theta3(1, 1) = jointValueCur[5];
+    theta4(1, 1) = jointValueCur[6];
+    theta5(1, 1) = jointValueCur[7];
+    theta6(1, 1) = jointValueCur[8];
+
+    mwArray pos(1, 6, mxDOUBLE_CLASS);
+
+    forward(1, pos, x, y, th, theta1, theta2, theta3, theta4, theta5, theta6);
+
+    pos.GetData(terminalPos, 6);
+    return 0;
+}
+
+int KinematicSolution::lineInterpolationFun(/*in*/const double* deltaTerminalPos, const double* jointValueCur, /*out*/double* jointValueArray)
 {
     // deltaTerminalPos
     mwArray deltaX_cur(1,1,mxDOUBLE_CLASS);
@@ -121,7 +158,6 @@ int KinematicSolution::lineInterpolationFun(/*in*/double* deltaTerminalPos, doub
 
     // jointValueArray
     jointValue.GetData(jointValueArray, 900);
-
     return 0;
 }
 

@@ -35,7 +35,6 @@ private:
 private slots:
     void confirmBtn_Clicked();
     void cancleBtn_Clicked();
-
 };
 
 #endif // AUTHENTICATION_H

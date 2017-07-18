@@ -401,7 +401,6 @@ private:
 
 /** *****************************机器人轨迹规划**********************************/
 private:
-    KinematicSolution solver;
     double velocityValue;
     Model ms;
     //MyThread updateThread;

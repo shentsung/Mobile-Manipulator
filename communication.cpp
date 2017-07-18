@@ -12,6 +12,11 @@ Communication::Communication()
 
 }
 
+Communication::~Communication()
+{
+    SerialClose();
+}
+
 bool Communication::SerialInit()
 {
     agvPort = new QSerialPort(MainWindow::portName);

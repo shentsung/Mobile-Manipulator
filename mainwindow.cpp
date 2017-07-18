@@ -103,6 +103,9 @@ MainWindow::MainWindow(QWidget *parent) :
     velocityValue = 0;
     MyThread::getInstance()->start();
 
+    // 运动学解算初始化，加载MCR
+    KinematicSolution::getInstance();
+
     // 定时器初始化，定期对刷新界面
     updateInterfaceTimer.start(10);
 }
@@ -112,10 +115,16 @@ MainWindow::~MainWindow()
     sendFileInstance->close();
     receiveFileInstance->close();
 
+    // 运动学求解函数释放
+    KinematicSolution::destory();
+
     // 终止线程
     MyThread::getInstance()->stop();
     MyThread::getInstance()->wait();
     MyThread::destory();
+
+    // 销毁Communication 单件实例
+    Communication::destory();
 }
 
 
@@ -1929,10 +1938,12 @@ void MainWindow::pointToPoint()
     // 解算关节值
     double jointValueObj[9] = {0};
 
-    solver.inverseFun(terminalPos,MyThread::getInstance()->jointValueCur, jointValueObj);  // Ps: jointValueCur的实时更新问题
+    KinematicSolution::getInstance()->inverseFun(terminalPos,MyThread::getInstance()->jointValueCur, jointValueObj);  // Ps: jointValueCur的实时更新问题
 
     for(int i=0; i<9; i++)
         qDebug()<<jointValueObj[i];
+
+
 }
 
 // 直线轨迹函数定义
@@ -1949,7 +1960,7 @@ void MainWindow::straightLine()
 
     // 解算关节序列
     double jointValueArray[100][9] = {0};
-    solver.lineInterpolationFun(terminalPos, MyThread::getInstance()->jointValueCur, *jointValueArray);
+    KinematicSolution::getInstance()->lineInterpolationFun(terminalPos, MyThread::getInstance()->jointValueCur, *jointValueArray);
 
     for(int i=0; i<100; i++)
         for(int j=0; j<9; j++)
@@ -2093,12 +2104,17 @@ void MainWindow::updateInterface()
    jointBar5->setValue(MyThread::getInstance()->jointValueCur[4]);
    jointBar6->setValue(MyThread::getInstance()->jointValueCur[5]);
 
-   toolDisLineEditX->setText("0.00");
-   toolDisLineEditY->setText("0.00");
-   toolDisLineEditZ->setText("0.00");
-   toolDisLineEditRx->setText("0.00");
-   toolDisLineEditRy->setText("0.00");
-   toolDisLineEditRz->setText("0.00");
+
+   /**  正运动学  **/
+   double terminalPos[6] = {0};
+   KinematicSolution::getInstance()->forwardFun(MyThread::getInstance()->jointValueCur, terminalPos);
+
+   toolDisLineEditX->setText(QString::number(terminalPos[0], 'f', 2));
+   toolDisLineEditY->setText(QString::number(terminalPos[1], 'f', 2));
+   toolDisLineEditZ->setText(QString::number(terminalPos[2], 'f', 2));
+   toolDisLineEditRx->setText(QString::number(terminalPos[3], 'f', 2));
+   toolDisLineEditRy->setText(QString::number(terminalPos[4], 'f', 2));
+   toolDisLineEditRz->setText(QString::number(terminalPos[5], 'f', 2));
 }
 
 

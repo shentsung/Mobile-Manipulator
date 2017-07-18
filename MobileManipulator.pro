@@ -30,7 +30,8 @@ HEADERS  += mainwindow.h \
     inverse.h \
     lineInterpolation.h \
     mythread.h \
-    communication.h
+    communication.h \
+    forward.h
 
 
 RESOURCES += \
@@ -51,6 +52,7 @@ INCLUDEPATH += C:\Study_SoftWare\Matlab\R2014a\extern\include
 
 LIBS += C:/Users/yanglei/Desktop/MobileManipulator/inverse.lib
 LIBS += C:/Users/yanglei/Desktop/MobileManipulator/lineInterpolation.lib
+LIBS += C:/Users/yanglei/Desktop/MobileManipulator/forward.lib
 
 LIBS += -L$$PWD/../../../../Study_SoftWare/Matlab/R2014a/extern/lib/win64/microsoft/ -lmclmcr
 

@@ -27,10 +27,14 @@ public:
     bool SerialInit();
     void SerialClose();
     int SerialWrite(QString strBuf);
+
+
     QByteArray SerialRead();
+
 /**  成员函数  **/
 private:
     Communication();
+    ~Communication();
     static Communication* singleton;
 
 

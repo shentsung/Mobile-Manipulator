@@ -1,4 +1,3 @@
-//
 // MATLAB Compiler: 5.1 (R2014a)
 // Date: Mon Jul 10 11:30:03 2017
 // Arguments: "-B" "macro_default" "-W" "cpplib:inverse" "-T" "link:lib" "-d"
@@ -8,7 +7,6 @@
 // "C:\Users\yanglei\Desktop\inverse\SerialLink.m"
 // "class{Class1:C:\Users\yanglei\Desktop\inverse\inverse.m,C:\Users\yanglei\Des
 // ktop\inverse\Link.m,C:\Users\yanglei\Desktop\inverse\SerialLink.m}" 
-//
 
 #ifndef __inverse_h
 #define __inverse_h 1
