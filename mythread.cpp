@@ -20,11 +20,11 @@ void MyThread::run()
     {
         if(MainWindow::communicationState)
         {
-            qDebug() << "nyThread...";
-            sleep(1);
-
+            // qDebug() << "nyThread...";
+            sleep(0.01);
             receivedArray = Communication::getInstance()->SerialRead();
-            qDebug() << receivedArray;
+
+            // qDebug() << receivedArray;
         }
 
     }

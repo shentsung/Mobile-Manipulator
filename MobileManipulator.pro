@@ -8,6 +8,7 @@ QT       += core gui
 QT       += sql
 QT       += network
 QT       += serialport
+QT       += xml
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -20,7 +21,8 @@ SOURCES += main.cpp\
     authentication.cpp \
     kinematicsolution.cpp \
     mythread.cpp \
-    communication.cpp
+    communication.cpp \
+    trackthread.cpp
 
 HEADERS  += mainwindow.h \
          QRoundProgressBar.h \
@@ -31,7 +33,8 @@ HEADERS  += mainwindow.h \
     lineInterpolation.h \
     mythread.h \
     communication.h \
-    forward.h
+    forward.h \
+    trackthread.h
 
 
 RESOURCES += \

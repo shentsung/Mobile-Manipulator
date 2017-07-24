@@ -27,6 +27,9 @@ public:
     bool SerialInit();
     void SerialClose();
     int SerialWrite(QString strBuf);
+    int sendControlInstruction(double x, double y, double th, double theta1, double theta2, double theta3, double theta4, double theta5, double theta6);
+    int receiveControlInstruction(double* x, double* y, double* th, double* theta1, double* theta2, double* theta3, double* theta4, double* theta5, double* theta6);
+
 
 
     QByteArray SerialRead();

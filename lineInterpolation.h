@@ -1,6 +1,6 @@
 //
 // MATLAB Compiler: 5.1 (R2014a)
-// Date: Mon Jul 10 11:16:49 2017
+// Date: Thu Jul 20 16:26:31 2017
 // Arguments: "-B" "macro_default" "-W" "cpplib:lineInterpolation" "-T"
 // "link:lib" "-d"
 // "C:\Users\yanglei\Desktop\lineInterpolation\lineInterpolation\for_testing"
@@ -13,7 +13,7 @@
 //
 
 #ifndef __lineInterpolation_h
-#define __lineInterpolation_h
+#define __lineInterpolation_h 1
 
 #if defined(__cplusplus) && !defined(mclmcrrt_h) && defined(__linux__)
 #  pragma implementation "mclmcrrt.h"

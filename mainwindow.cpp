@@ -44,11 +44,14 @@
 
 #include "communication.h"
 
+#include "trackthread.h"
+
 // 编译时未报错，但生成的程序中文乱码
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
 #endif
 
+/**   全局变量初始化   **/
 QString MainWindow::portName = "COM1";
 int MainWindow::buadRate = 9600;
 int MainWindow::dataBitsIndex = 3;
@@ -56,6 +59,8 @@ int MainWindow::parityIndex = 2;
 int MainWindow::stopBitsIndex = 0;
 
 bool MainWindow::communicationState = false;
+
+double MainWindow::jointsArray[900] = {0};
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -178,6 +183,9 @@ void MainWindow::signalSlotConnection()
     // 关节复位槽函数
     QObject::connect(resetButton, SIGNAL(clicked(bool)), this, SLOT(resetButtonClicked()), Qt::UniqueConnection);
     QObject::connect(&updateInterfaceTimer, SIGNAL(timeout()), this, SLOT(updateInterface()));
+
+    // TCP通信调试槽函数
+     QObject::connect(debugPushButton, SIGNAL(clicked(bool)), this, SLOT(kukaSendMessage()), Qt::UniqueConnection);
 }
 
 //按钮初始化
@@ -643,7 +651,37 @@ void MainWindow::menuPageInitialize()
 //分界面2初始化
  void MainWindow::secondPageInitialize()
  {
-     QGridLayout *secondPageLayout = new QGridLayout();
+     QVBoxLayout *secondPageLayout = new QVBoxLayout();
+
+     QFont BtnFont("幼圆", 12);
+     QFont LineFont("幼圆", 13);
+
+     receiveTextEdit = new QTextEdit();
+     receiveTextEdit->setFixedSize(615, 300);
+     receiveTextEdit->setFont(LineFont);
+     QHBoxLayout *debugLayout1 = new QHBoxLayout();
+     debugLayout1->addWidget(receiveTextEdit);
+
+     QHBoxLayout *debugLayout2 = new QHBoxLayout();
+     sendLineEdit = new QLineEdit();
+     sendLineEdit->setFixedSize(500, 30);
+     sendLineEdit->setFont(LineFont);
+
+     debugPushButton = new QPushButton("发送指令");
+     debugPushButton->setFixedSize(100, 35);
+     debugPushButton->setFont(BtnFont);
+
+     debugLayout2->addSpacing(250);
+     debugLayout2->addWidget(sendLineEdit);
+     debugLayout2->addSpacing(5);
+     debugLayout2->addWidget(debugPushButton);
+     debugLayout2->addSpacing(250);
+
+     secondPageLayout->addSpacing(120);
+     secondPageLayout->addLayout(debugLayout1);
+     secondPageLayout->addLayout(debugLayout2);
+     secondPageLayout->addSpacing(120);
+
      secondPageWidget->setLayout(secondPageLayout);
  }
  
@@ -840,17 +878,17 @@ void MainWindow::menuPageInitialize()
 
 //关节位置界面布局
      jointBar1 = new QProgressBar();
-     jointBar1->setFixedSize(323,21);
+     jointBar1->setFixedSize(321,21);
      jointBar2 = new QProgressBar();
-     jointBar2->setFixedSize(323,21);
+     jointBar2->setFixedSize(321,21);
      jointBar3 = new QProgressBar();
-     jointBar3->setFixedSize(323,21);
+     jointBar3->setFixedSize(321,21);
      jointBar4 = new QProgressBar();
-     jointBar4->setFixedSize(323,21);
+     jointBar4->setFixedSize(321,21);
      jointBar5 = new QProgressBar();
-     jointBar5->setFixedSize(323,21);
+     jointBar5->setFixedSize(321,21);
      jointBar6 = new QProgressBar();
-     jointBar6->setFixedSize(323,21);
+     jointBar6->setFixedSize(321,21);
 
      jointBar1->setStyleSheet("QProgressBar::chunk{background-color: #05B8CC;} QProgressBar{border:2px solid grey; border-radius:5px; background-color: #FFFFFF;}");
      jointBar2->setStyleSheet("QProgressBar::chunk{background-color: #05B8CC;} QProgressBar{border:2px solid grey; border-radius:5px; background-color: #FFFFFF;}");
@@ -986,58 +1024,36 @@ void MainWindow::menuPageInitialize()
      jointRowR6->setIcon(QIcon(QPixmap(":/image/arrow-right.png")));
      jointRowR6->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
 
-     jointLine1 = new QLineEdit();
-     jointLine2 = new QLineEdit();
-     jointLine3 = new QLineEdit();
-     jointLine4 = new QLineEdit();
-     jointLine5 = new QLineEdit();
-     jointLine6 = new QLineEdit();
+     jointSpinBox1 = new QDoubleSpinBox();
+     jointSpinBox2 = new QDoubleSpinBox();
+     jointSpinBox3 = new QDoubleSpinBox();
+     jointSpinBox4 = new QDoubleSpinBox();
+     jointSpinBox5 = new QDoubleSpinBox();
+     jointSpinBox6 = new QDoubleSpinBox();
 
-     jointLine1->setFixedWidth(68);
-     jointLine2->setFixedWidth(68);
-     jointLine3->setFixedWidth(68);
-     jointLine4->setFixedWidth(68);
-     jointLine5->setFixedWidth(68);
-     jointLine6->setFixedWidth(68);
+     jointSpinBox1->setFixedWidth(70);
+     jointSpinBox2->setFixedWidth(70);
+     jointSpinBox3->setFixedWidth(70);
+     jointSpinBox4->setFixedWidth(70);
+     jointSpinBox5->setFixedWidth(70);
+     jointSpinBox6->setFixedWidth(70);
 
-     /*
-     jointLine1->setReadOnly(true);
-     jointLine2->setReadOnly(true);
-     jointLine3->setReadOnly(true);
-     jointLine4->setReadOnly(true);
-     jointLine5->setReadOnly(true);
-     jointLine6->setReadOnly(true);
-     */
+     jointSpinBox1->setAlignment(Qt::AlignRight);
+     jointSpinBox2->setAlignment(Qt::AlignRight);
+     jointSpinBox3->setAlignment(Qt::AlignRight);
+     jointSpinBox4->setAlignment(Qt::AlignRight);
+     jointSpinBox5->setAlignment(Qt::AlignRight);
+     jointSpinBox6->setAlignment(Qt::AlignRight);
 
-     jointLine1->setStyleSheet("QLineEdit{border: 1.3px solid grey; border-radius:1px;}");
-     jointLine2->setStyleSheet("QLineEdit{border: 1.3px solid grey; border-radius:1px;}");
-     jointLine3->setStyleSheet("QLineEdit{border: 1.3px solid grey; border-radius:1px;}");
-     jointLine4->setStyleSheet("QLineEdit{border: 1.3px solid grey; border-radius:1px;}");
-     jointLine5->setStyleSheet("QLineEdit{border: 1.3px solid grey; border-radius:1px;}");
-     jointLine6->setStyleSheet("QLineEdit{border: 1.3px solid grey; border-radius:1px;}");
-
-     jointLine1->setAlignment(Qt::AlignRight);
-     jointLine2->setAlignment(Qt::AlignRight);
-     jointLine3->setAlignment(Qt::AlignRight);
-     jointLine4->setAlignment(Qt::AlignRight);
-     jointLine5->setAlignment(Qt::AlignRight);
-     jointLine6->setAlignment(Qt::AlignRight);
-
+     QFont jointSpinFont("幼圆", 10);
      QFont lineEditFont("幼圆", 10);
 
-     jointLine1->setFont(lineEditFont);
-     jointLine2->setFont(lineEditFont);
-     jointLine3->setFont(lineEditFont);
-     jointLine4->setFont(lineEditFont);
-     jointLine5->setFont(lineEditFont);
-     jointLine6->setFont(lineEditFont);
-
-     jointLine1->setText("0.00");
-     jointLine2->setText("0.00");
-     jointLine3->setText("0.00");
-     jointLine4->setText("0.00");
-     jointLine5->setText("0.00");
-     jointLine6->setText("0.00");
+     jointSpinBox1->setFont(jointSpinFont);
+     jointSpinBox2->setFont(jointSpinFont);
+     jointSpinBox3->setFont(jointSpinFont);
+     jointSpinBox4->setFont(jointSpinFont);
+     jointSpinBox5->setFont(jointSpinFont);
+     jointSpinBox6->setFont(jointSpinFont);
 
      unitLabel1 = new QLabel();
      unitLabel2 = new QLabel();
@@ -1079,42 +1095,42 @@ void MainWindow::menuPageInitialize()
      jointTempLayout1->addWidget(jointBar1);
      jointTempLayout1->addWidget(jointRowR1);
      jointLayout1->addLayout(jointTempLayout1);
-     jointLayout1->addWidget(jointLine1);
+     jointLayout1->addWidget(jointSpinBox1);
      jointLayout1->addWidget(unitLabel1);
      jointTempLayout2->addWidget(jointLabel2);
      jointTempLayout2->addWidget(jointRowL2);
      jointTempLayout2->addWidget(jointBar2);
      jointTempLayout2->addWidget(jointRowR2);
      jointLayout2->addLayout(jointTempLayout2);
-     jointLayout2->addWidget(jointLine2);
+     jointLayout2->addWidget(jointSpinBox2);
      jointLayout2->addWidget(unitLabel2);
      jointTempLayout3->addWidget(jointLabel3);
      jointTempLayout3->addWidget(jointRowL3);
      jointTempLayout3->addWidget(jointBar3);
      jointTempLayout3->addWidget(jointRowR3);
      jointLayout3->addLayout(jointTempLayout3);
-     jointLayout3->addWidget(jointLine3);
+     jointLayout3->addWidget(jointSpinBox3);
      jointLayout3->addWidget(unitLabel3);
      jointTempLayout4->addWidget(jointLabel4);
      jointTempLayout4->addWidget(jointRowL4);
      jointTempLayout4->addWidget(jointBar4);
      jointTempLayout4->addWidget(jointRowR4);
      jointLayout4->addLayout(jointTempLayout4);
-     jointLayout4->addWidget(jointLine4);
+     jointLayout4->addWidget(jointSpinBox4);
      jointLayout4->addWidget(unitLabel4);
      jointTempLayout5->addWidget(jointLabel5);
      jointTempLayout5->addWidget(jointRowL5);
      jointTempLayout5->addWidget(jointBar5);
      jointTempLayout5->addWidget(jointRowR5);
      jointLayout5->addLayout(jointTempLayout5);
-     jointLayout5->addWidget(jointLine5);
+     jointLayout5->addWidget(jointSpinBox5);
      jointLayout5->addWidget(unitLabel5);
      jointTempLayout6->addWidget(jointLabel6);
      jointTempLayout6->addWidget(jointRowL6);
      jointTempLayout6->addWidget(jointBar6);
      jointTempLayout6->addWidget(jointRowR6);
      jointLayout6->addLayout(jointTempLayout6);
-     jointLayout6->addWidget(jointLine6);
+     jointLayout6->addWidget(jointSpinBox6);
      jointLayout6->addWidget(unitLabel6);
 
      QSpacerItem *space = new QSpacerItem(0.5*WIN_W-120,30);
@@ -1147,6 +1163,7 @@ void MainWindow::menuPageInitialize()
      toolSetLabelRz = new QLabel();
 
      QFont toolLabelFont("幼圆", 11);
+     QFont toolspinBoxFont("幼圆", 10);
 
      toolSetLabelX->setText("X");
      toolSetLabelY->setText("Y");
@@ -1176,14 +1193,12 @@ void MainWindow::menuPageInitialize()
      toolSetSpinBoxRy->setFixedWidth(70);
      toolSetSpinBoxRz->setFixedWidth(70);
 
-     /*
-     toolSetSpinBoxX->setStyleSheet("QDoubleSpinBox{border: 0px solid grey; border-radius:1px;}");
-     toolSetSpinBoxY->setStyleSheet("QDoubleSpinBox{border: 0px solid grey; border-radius:1px;}");
-     toolSetSpinBoxZ->setStyleSheet("QDoubleSpinBox{border: 0px solid grey; border-radius:1px;}");
-     toolSetSpinBoxRx->setStyleSheet("QDoubleSpinBox{border: 0px solid grey; border-radius:1px;}");
-     toolSetSpinBoxRy->setStyleSheet("QDoubleSpinBox{border: 0px solid grey; border-radius:1px;}");
-     toolSetSpinBoxRz->setStyleSheet("QDoubleSpinBox{border: 0px solid grey; border-radius:1px;}");
-     */
+     toolSetSpinBoxX->setFont(toolspinBoxFont);
+     toolSetSpinBoxY->setFont(toolspinBoxFont);
+     toolSetSpinBoxZ->setFont(toolspinBoxFont);
+     toolSetSpinBoxRx->setFont(toolspinBoxFont);
+     toolSetSpinBoxRy->setFont(toolspinBoxFont);
+     toolSetSpinBoxRz->setFont(toolspinBoxFont);
 
      toolSetSpinBoxX->setAlignment(Qt::AlignRight);
      toolSetSpinBoxY->setAlignment(Qt::AlignRight);
@@ -1685,13 +1700,14 @@ void MainWindow::passWordCancelBtn_Clicked()
 //kukaRobot 通信建立
 void MainWindow::connectBtn_Clicked()
 {
-    /*
+
     receiveSize=0;
     tcpSocket->abort();
     ipAddress = QHostAddress(ipLineEdit->text());
     portNum = portLineEdit->text().toInt();
     tcpSocket->connectToHost(QHostAddress::LocalHost,portNum);
-    */
+
+
     MainWindow::portName = serialPortComboBox->currentText();
     MainWindow::buadRate = buadRateComboBox->currentText().toInt();
     MainWindow::dataBitsIndex = dataBitsComboBox->currentIndex();
@@ -1732,18 +1748,10 @@ void MainWindow::resetBtn_Clicked()
 //kukaRobot 数据接收
 void MainWindow::kukaReceiveMessage()
 {
-    QDataStream in(tcpSocket);
-    in.setVersion(QDataStream::Qt_5_7);
-    if(receiveSize == 0)
-    {
-        if(tcpSocket->bytesAvailable()<(int)sizeof(quint16))
-            return;
-        in>>receiveSize;
-    }
-    if(tcpSocket->bytesAvailable()<receiveSize)
-        return;
-    in>>receiveMsg;
+    receiveMsg = tcpSocket->readAll();
+    receiveTextEdit->append(receiveMsg);
     qDebug()<<receiveMsg;
+    qDebug()<<"receive...";
 }
 
 //kukaRobot 通信故障信息提示
@@ -1755,16 +1763,9 @@ void MainWindow::displayError(QAbstractSocket::SocketError)
 //kukaRobot 数据发送
 void MainWindow::kukaSendMessage()
 {
-    QByteArray block;
-    block.resize(0);
-    sendMsg = "123456789";
-    QDataStream out(&block,QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_5_7);
-    out<<(quint16)0;
-    out<<sendMsg.toLatin1();
-    out.device()->seek(0);
-    out<<(quint16)(block.size()-sizeof(quint16));
-    tcpSocket->write(block);
+    sendMsg = sendLineEdit->text();
+    tcpSocket->write(sendMsg.toLatin1());
+    qDebug() << tr("发送数据");
 }
 
 
@@ -1941,9 +1942,10 @@ void MainWindow::pointToPoint()
     KinematicSolution::getInstance()->inverseFun(terminalPos,MyThread::getInstance()->jointValueCur, jointValueObj);  // Ps: jointValueCur的实时更新问题
 
     for(int i=0; i<9; i++)
-        qDebug()<<jointValueObj[i];
+        qDebug() << jointValueObj[i];
 
-
+    Communication::getInstance()->sendControlInstruction(jointValueObj[0], jointValueObj[1], jointValueObj[2], jointValueObj[3], jointValueObj[4], jointValueObj[5], jointValueObj[6], jointValueObj[7], jointValueObj[8]);
+    qDebug()<< "pointToPoint" << jointValueObj[0] << jointValueObj[1] << jointValueObj[2] << jointValueObj[3] << jointValueObj[4] << jointValueObj[5] << jointValueObj[6] << jointValueObj[7] << jointValueObj[8];
 }
 
 // 直线轨迹函数定义
@@ -1957,16 +1959,48 @@ void MainWindow::straightLine()
     terminalPos[3] = toolSetSpinBoxRx->value();
     terminalPos[4] = toolSetSpinBoxRy->value();
     terminalPos[5] = toolSetSpinBoxRz->value();
+    /*
+    qDebug()<<terminalPos[0]
+            <<terminalPos[1]
+            <<terminalPos[2]
+            <<terminalPos[3]
+            <<terminalPos[4]
+            <<terminalPos[5];
+    qDebug()<<MyThread::getInstance()->jointValueCur[0]
+            <<MyThread::getInstance()->jointValueCur[1]
+            <<MyThread::getInstance()->jointValueCur[2]
+            <<MyThread::getInstance()->jointValueCur[3]
+            <<MyThread::getInstance()->jointValueCur[4]
+            <<MyThread::getInstance()->jointValueCur[5]
+            <<MyThread::getInstance()->jointValueCur[6]
+            <<MyThread::getInstance()->jointValueCur[7]
+            <<MyThread::getInstance()->jointValueCur[8];
+    */
 
-    // 解算关节序列
-    double jointValueArray[100][9] = {0};
-    KinematicSolution::getInstance()->lineInterpolationFun(terminalPos, MyThread::getInstance()->jointValueCur, *jointValueArray);
-
+    // 解算关节序列----->解算结果---->数组的存储方式需重点关注||关注调用技巧
+    KinematicSolution::getInstance()->lineInterpolationFun(terminalPos, MyThread::getInstance()->jointValueCur, MainWindow::jointsArray);
+    /*
     for(int i=0; i<100; i++)
-        for(int j=0; j<9; j++)
-            qDebug()<<jointValueArray[i][j];
+        qDebug()<<MainWindow::jointsArray[100*0+i]
+                <<MainWindow::jointsArray[100*1+i]
+                <<MainWindow::jointsArray[100*2+i]
+                <<MainWindow::jointsArray[100*3+i]
+                <<MainWindow::jointsArray[100*4+i]
+                <<MainWindow::jointsArray[100*5+i]
+                <<MainWindow::jointsArray[100*6+i]
+                <<MainWindow::jointsArray[100*7+i]
+                <<MainWindow::jointsArray[100*8+i];
+    */
+    // 关联插补线程槽函数---->轨迹插补之后的线程释放
+    //TrackThread::getInstance();
+    //TrackThread* pTrack = TrackThread::getInstance();
+    //QObject::connect(pTrack, SIGNAL(trackComplete()), this, SLOT(destroyTrackThread()));
 }
 
+void MainWindow::destroyTrackThread()
+{
+    ;
+}
 // 圆弧轨迹函数定义
 void MainWindow::circularPath()
 {
@@ -2040,56 +2074,191 @@ void MainWindow::stopRoutine()
 // 单一关节微调槽函数定义
 void MainWindow::jointL1Clicked()
 {
-    qDebug() << "jointL1Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1 = MyThread::getInstance()->jointValueCur[3] - jointSpinBox1->value();
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    qDebug() << "jointL1Clicked" << xCur << yCur << thCur << theta1 << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
 }
 void MainWindow::jointL2Clicked()
 {
-    qDebug() << "jointL2Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2 = MyThread::getInstance()->jointValueCur[4] - jointSpinBox2->value();
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    qDebug() << "jointL2Clicked" << xCur << yCur << thCur << theta1Cur << theta2 << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
 }
 void MainWindow::jointL3Clicked()
 {
-    qDebug() << "jointL3Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3 = MyThread::getInstance()->jointValueCur[5] - jointSpinBox3->value();
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
+    qDebug() << "jointL3Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3 << theta4Cur << theta5Cur << theta6Cur;
 }
 void MainWindow::jointL4Clicked()
 {
-    qDebug() << "jointL4Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4 = MyThread::getInstance()->jointValueCur[6] - jointSpinBox4->value();
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
+    qDebug() << "jointL4Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4 << theta5Cur << theta6Cur;
 }
 void MainWindow::jointL5Clicked()
 {
-    qDebug() << "jointL5Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5 = MyThread::getInstance()->jointValueCur[7] - jointSpinBox5->value();
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
+    qDebug() << "jointL5Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5 << theta6Cur;
 }
 void MainWindow::jointL6Clicked()
 {
-    qDebug() << "jointL6Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6 = MyThread::getInstance()->jointValueCur[8] - jointSpinBox6->value();
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
+    qDebug() << "jointL6Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6;
 }
 void MainWindow::jointR1Clicked()
 {
-    qDebug() << "jointR1Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1 = MyThread::getInstance()->jointValueCur[3] + jointSpinBox1->value();
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    qDebug() << "jointR1Clicked" << xCur << yCur << thCur << theta1 << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
 }
 void MainWindow::jointR2Clicked()
 {
-    qDebug() << "jointR2Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2 = MyThread::getInstance()->jointValueCur[4] + jointSpinBox2->value();
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    qDebug() << "jointR2Clicked" << xCur << yCur << thCur << theta1Cur << theta2 << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
 }
 void MainWindow::jointR3Clicked()
 {
-    qDebug() << "jointR3Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3 = MyThread::getInstance()->jointValueCur[5] + jointSpinBox3->value();
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
+    qDebug() << "jointR3Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3 << theta4Cur << theta5Cur << theta6Cur;
 }
 void MainWindow::jointR4Clicked()
 {
-    qDebug() << "jointR4Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4 = MyThread::getInstance()->jointValueCur[6] + jointSpinBox4->value();
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
+    qDebug() << "jointR4Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4 << theta5Cur << theta6Cur;
 }
 void MainWindow::jointR5Clicked()
 {
-    qDebug() << "jointR5Clickedy";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5 = MyThread::getInstance()->jointValueCur[7]  + jointSpinBox5->value();
+    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
+    qDebug() << "jointR5Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5 << theta6Cur;
 }
 void MainWindow::jointR6Clicked()
 {
-    qDebug() << "jointR6Clicked";
+    double xCur = MyThread::getInstance()->jointValueCur[0];
+    double yCur = MyThread::getInstance()->jointValueCur[1];
+    double thCur = MyThread::getInstance()->jointValueCur[2];
+    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
+    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
+    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
+    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
+    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
+    double theta6 = MyThread::getInstance()->jointValueCur[8] + jointSpinBox6->value();
+
+    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
+    qDebug() << "jointR6Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6;
 }
 
 // 关节复位槽函数定义
 void MainWindow::resetButtonClicked()
 {
+    // 六自由度机械臂复位？ or  机械臂+全向车复位？
+    // 暂定为情况1
+    Communication::getInstance()->sendControlInstruction(0,0,0,0,0,0,0,0,0);
     qDebug() << "jointReset";
 }
 

@@ -23,6 +23,7 @@ KinematicSolution::~KinematicSolution()
     // 函数释放
     inverseTerminate();
     lineInterpolationTerminate();
+    forwardTerminate();
 }
 
 

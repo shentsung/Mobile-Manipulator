@@ -9,7 +9,8 @@ class MyThread : public QThread
 {
      Q_OBJECT
 public: 
-    double jointValueCur[9];      // 当前机器人姿态
+    // jointValueCur  数组：x y th theta1 theta2 theta3 theta4 theta5 theta6
+    double jointValueCur[9];
     void stop();
 
     static MyThread* getInstance()

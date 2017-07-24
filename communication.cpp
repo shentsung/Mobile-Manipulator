@@ -52,4 +52,15 @@ QByteArray Communication::SerialRead()
     return agvPort->readAll();
 }
 
+// 通信协议封装    全向车协议+机械臂协议
+int Communication::sendControlInstruction(double x, double y, double th, double theta1, double theta2, double theta3, double theta4, double theta5, double theta6)
+{
+    return 0;
+}
+
+int Communication::receiveControlInstruction(double* x, double* y, double* th, double* theta1, double* theta2, double* theta3, double* theta4, double* theta5, double* theta6)
+{
+    return 0;
+}
+
 

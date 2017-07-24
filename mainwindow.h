@@ -151,8 +151,6 @@ private:
     QLabel wheelLabel3;
     QLabel wheelLabel4;
 
-
-
 //菜单栏
     QStackedWidget *menuStackedWidget;
     QWidget *menuPageWidget;
@@ -209,12 +207,12 @@ private:
     QPushButton *jointRowR5;
     QPushButton *jointRowR6;
 
-    QLineEdit *jointLine1;
-    QLineEdit *jointLine2;
-    QLineEdit *jointLine3;
-    QLineEdit *jointLine4;
-    QLineEdit *jointLine5;
-    QLineEdit *jointLine6;
+    QDoubleSpinBox *jointSpinBox1;
+    QDoubleSpinBox *jointSpinBox2;
+    QDoubleSpinBox *jointSpinBox3;
+    QDoubleSpinBox *jointSpinBox4;
+    QDoubleSpinBox *jointSpinBox5;
+    QDoubleSpinBox *jointSpinBox6;
 
     QPushButton *resetButton;
 
@@ -398,6 +396,13 @@ private:
     QTextStream *sendOut;
     QTextStream *receiveOut;
 
+/**  Tcp通讯调试相关  **/
+private:
+    QLineEdit *sendLineEdit;
+    QTextEdit *receiveTextEdit;
+    QPushButton *debugPushButton;
+
+
 
 /** *****************************机器人轨迹规划**********************************/
 private:
@@ -451,6 +456,9 @@ private slots:
     // 界面定时更新槽函数
     void updateInterface();
 
+    // 插补子线程释放槽函数
+    void destroyTrackThread();
+
 /**  全局变量-控制系统通信相关  **/
 public:
     // 485总线通信参数
@@ -459,9 +467,11 @@ public:
     static int dataBitsIndex;
     static int parityIndex;
     static int stopBitsIndex;
-
     // 系统通信状态
     static bool communicationState;
+
+/**  全局变量 - 轨迹插补相关(直线、圆弧)   **/
+    static double jointsArray[900];
 };
 
 #endif // MAINWINDOW_H

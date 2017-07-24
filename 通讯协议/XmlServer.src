@@ -1,0 +1,45 @@
+&ACCESS RV
+&REL 1
+&PARAM DISKPATH = KRC:\R1\Program
+&PARAM SensorITMASK = *
+&PARAM TEMPLATE = C:\KRC\Roboter\Template\vorgabe
+DEF XmlServer( )
+;FOLD Declaration
+  DECL EKI_STATUS RET
+;ENDFOLD (Declaration)
+;FOLD INI
+  ;FOLD BASISTECH INI
+  BAS (#INITMOV,0 )
+  ;ENDFOLD (BASISTECH INI)
+  ;FOLD USER INI
+    ;Make your modifications here
+
+  ;ENDFOLD (USER INI)
+;ENDFOLD (INI)
+
+RET=EKI_Init("XmlServer")
+RET=EKI_Open("XmlServer")
+
+; wait until server is conntected
+wait for $FLAG[1]
+;FOLD Write data to connection
+  ; Write frame to <LastPos X="" Y="" Z="" A="" B="" C="" />
+  RET=EKI_SetFrame("XmlServer","Robot/Data/LastPos", TOOL_DATA[1])
+  ; Write real to <ActPos X="" />
+  RET=EKI_SetReal("XmlServer","Robot/Data/ActPos/@X", 1000.12)
+  ; Write int to <Status></Status>
+  RET=EKI_SetInt("XmlServer","Robot/Status", 12345678)
+  ; Write string to <Mode></Mode>
+  RET=EKI_SetString("XmlServer","Robot/Mode","ConnectSensor")
+  ; Write bool to <LightOn></LightOn>
+  RET=EKI_SetBool("XmlServer","Robot/RobotLamp/GrenLamp/LightOn",true)
+;ENDFOLD (Write data to connection)
+;FOLD Send data to external program
+  RET = EKI_Send("XmlServer","Robot")
+  WAIT SEC 1
+;ENDFOLD (Send data to external program)
+; wait until server is deconnected
+wait for $FLAG[1]==FALSE`
+
+RET=EKI_Clear("XmlServer")
+END
