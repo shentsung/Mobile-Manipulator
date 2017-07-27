@@ -346,11 +346,6 @@ private:
 
 /********************************通信模块***********************************/
 private:  
-    // kukaRobot Tcp通信
-    QTcpSocket *tcpSocket;
-    QHostAddress ipAddress;
-    int portNum;
-
     QString receiveMsg;
     quint16 receiveSize;
     QString sendMsg;
@@ -363,10 +358,6 @@ private slots:
     //通信相关槽函数定义
     void connectBtn_Clicked();
     void resetBtn_Clicked();
-    void kukaReceiveMessage();
-    void kukaSendMessage();
-    void displayError(QAbstractSocket::SocketError);
-
 
 /*******************************波形图表显示************************************/
 public:
@@ -469,6 +460,10 @@ public:
     static int stopBitsIndex;
     // 系统通信状态
     static bool communicationState;
+
+    // Tcp通信参数
+    static QHostAddress ipAddress;
+    static int portNum;
 
 /**  全局变量 - 轨迹插补相关(直线、圆弧)   **/
     static double jointsArray[900];

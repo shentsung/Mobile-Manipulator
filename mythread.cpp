@@ -2,6 +2,7 @@
 #include <QDebug>
 #include "mainwindow.h"
 #include "communication.h"
+#include <Windows.h>
 
 MyThread* MyThread::singleton = 0;
 
@@ -20,13 +21,13 @@ void MyThread::run()
     {
         if(MainWindow::communicationState)
         {
-            // qDebug() << "nyThread...";
-            sleep(0.01);
-            receivedArray = Communication::getInstance()->SerialRead();
-
-            // qDebug() << receivedArray;
+            int serialReceivedNum = Communication::getInstance()->SerialAvailableBytes();
+            int tcpReceivedNum = Communication::getInstance()->TcpAvailableBytes();
+            if(serialReceivedNum >= 10)
+                qDebug() << Communication::getInstance()->SerialRead();
+            if(tcpReceivedNum >= 10)
+                qDebug() << Communication::getInstance()->TcpReceive();
         }
-
     }
     stopped = false;
 }

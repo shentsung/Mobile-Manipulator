@@ -52,12 +52,17 @@
 #endif
 
 /**   全局变量初始化   **/
+// 485 通信
 QString MainWindow::portName = "COM1";
 int MainWindow::buadRate = 9600;
 int MainWindow::dataBitsIndex = 3;
 int MainWindow::parityIndex = 2;
 int MainWindow::stopBitsIndex = 0;
+// Tcp 通信
+int MainWindow::portNum = 6666;
+QHostAddress MainWindow::ipAddress = QHostAddress("192.168.1.24");
 
+// 通信状态标志位
 bool MainWindow::communicationState = false;
 
 double MainWindow::jointsArray[900] = {0};
@@ -79,9 +84,6 @@ MainWindow::MainWindow(QWidget *parent) :
     this->setCentralWidget(widget);
     this->resize(WIN_W, WIN_H);
     this->setWindowState(Qt::WindowMaximized);
-
-    //kuka六自由度机械臂通信
-    tcpSocket = new QTcpSocket();
 
     //记录保存相关初始化
     QString runPath = QCoreApplication::applicationDirPath();
@@ -148,8 +150,7 @@ void MainWindow::signalSlotConnection()
     //通信相关
     QObject::connect(connectBtn, SIGNAL(clicked(bool)), this, SLOT(connectBtn_Clicked()), Qt::UniqueConnection);
     QObject::connect(resetBtn, SIGNAL(clicked(bool)), this, SLOT(resetBtn_Clicked()), Qt::UniqueConnection);
-    QObject::connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(kukaReceiveMessage()), Qt::UniqueConnection);
-    QObject::connect(tcpSocket,SIGNAL(error(QAbstractSocket::SocketError)),this,SLOT(displayError()), Qt::UniqueConnection);
+
     //读写记录文件
     QObject::connect(openSendBtn, SIGNAL(clicked(bool)), this, SLOT(readSendRecordFun()),  Qt::UniqueConnection);
     QObject::connect(openReceiveBtn, SIGNAL(clicked(bool)), this, SLOT(readReceiveRecordFun()), Qt::UniqueConnection);
@@ -1700,26 +1701,26 @@ void MainWindow::passWordCancelBtn_Clicked()
 //kukaRobot 通信建立
 void MainWindow::connectBtn_Clicked()
 {
-
+    // TCP 全局变量更新
     receiveSize=0;
-    tcpSocket->abort();
-    ipAddress = QHostAddress(ipLineEdit->text());
-    portNum = portLineEdit->text().toInt();
-    tcpSocket->connectToHost(QHostAddress::LocalHost,portNum);
+    MainWindow::ipAddress = QHostAddress(ipLineEdit->text());
+    MainWindow::portNum = portLineEdit->text().toInt();
 
-
+    // 485 全局变量更新
     MainWindow::portName = serialPortComboBox->currentText();
     MainWindow::buadRate = buadRateComboBox->currentText().toInt();
     MainWindow::dataBitsIndex = dataBitsComboBox->currentIndex();
     MainWindow::parityIndex = stopBitsComboBox->currentIndex();
     MainWindow::stopBitsIndex = parityComboBox->currentIndex();
 
-    MainWindow::communicationState = Communication::getInstance()->SerialInit();
+    // 通信模块初始化
+    MainWindow::communicationState = Communication::getInstance()->CommunicationInit();
     qDebug() << MainWindow::communicationState;
 }
 
 void MainWindow::resetBtn_Clicked()
 {
+    // 485 通信控件/参数初始化
     serialPortComboBox->setCurrentIndex(0);
     buadRateComboBox->setCurrentIndex(3);
     dataBitsComboBox->setCurrentIndex(3);
@@ -1732,40 +1733,19 @@ void MainWindow::resetBtn_Clicked()
     MainWindow::parityIndex = stopBitsComboBox->currentIndex();
     MainWindow::stopBitsIndex = parityComboBox->currentIndex();
 
-    if(MainWindow::communicationState)
-    {
-        Communication::getInstance()->SerialClose();
-        MainWindow::communicationState = false;
-    }
-
-
-    tcpSocket->abort();
+    // Tcp通信控件/参数初始化
     ipLineEdit->setText("192.168.1.24");
     portLineEdit->setText("6666");
 
-}
+    MainWindow::ipAddress = QHostAddress(ipLineEdit->text());
+    MainWindow::portNum = portLineEdit->text().toInt();
 
-//kukaRobot 数据接收
-void MainWindow::kukaReceiveMessage()
-{
-    receiveMsg = tcpSocket->readAll();
-    receiveTextEdit->append(receiveMsg);
-    qDebug()<<receiveMsg;
-    qDebug()<<"receive...";
-}
-
-//kukaRobot 通信故障信息提示
-void MainWindow::displayError(QAbstractSocket::SocketError)
-{
-    tcpSocket->close();
-    QMessageBox::warning(this, tr("KukaRobot通信故障"), tcpSocket->errorString(), QMessageBox::Ok);
-}
-//kukaRobot 数据发送
-void MainWindow::kukaSendMessage()
-{
-    sendMsg = sendLineEdit->text();
-    tcpSocket->write(sendMsg.toLatin1());
-    qDebug() << tr("发送数据");
+    // 关闭通信
+    if(MainWindow::communicationState)
+    {
+        Communication::getInstance()->CommunicationClose();
+        MainWindow::communicationState = false;
+    }
 }
 
 
@@ -1936,16 +1916,7 @@ void MainWindow::pointToPoint()
     terminalPos[4] = toolSetSpinBoxRy->value();
     terminalPos[5] = toolSetSpinBoxRz->value();
 
-    // 解算关节值
-    double jointValueObj[9] = {0};
-
-    KinematicSolution::getInstance()->inverseFun(terminalPos,MyThread::getInstance()->jointValueCur, jointValueObj);  // Ps: jointValueCur的实时更新问题
-
-    for(int i=0; i<9; i++)
-        qDebug() << jointValueObj[i];
-
-    Communication::getInstance()->sendControlInstruction(jointValueObj[0], jointValueObj[1], jointValueObj[2], jointValueObj[3], jointValueObj[4], jointValueObj[5], jointValueObj[6], jointValueObj[7], jointValueObj[8]);
-    qDebug()<< "pointToPoint" << jointValueObj[0] << jointValueObj[1] << jointValueObj[2] << jointValueObj[3] << jointValueObj[4] << jointValueObj[5] << jointValueObj[6] << jointValueObj[7] << jointValueObj[8];
+    Communication::getInstance()->SendInstruction(terminalPos);
 }
 
 // 直线轨迹函数定义
@@ -2074,6 +2045,7 @@ void MainWindow::stopRoutine()
 // 单一关节微调槽函数定义
 void MainWindow::jointL1Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2084,11 +2056,13 @@ void MainWindow::jointL1Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
     qDebug() << "jointL1Clicked" << xCur << yCur << thCur << theta1 << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointL2Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2099,11 +2073,13 @@ void MainWindow::jointL2Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
     qDebug() << "jointL2Clicked" << xCur << yCur << thCur << theta1Cur << theta2 << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointL3Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2114,11 +2090,13 @@ void MainWindow::jointL3Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
     qDebug() << "jointL3Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3 << theta4Cur << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointL4Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2129,11 +2107,13 @@ void MainWindow::jointL4Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
     qDebug() << "jointL4Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4 << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointL5Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2144,11 +2124,13 @@ void MainWindow::jointL5Clicked()
     double theta5 = MyThread::getInstance()->jointValueCur[7] - jointSpinBox5->value();
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
     qDebug() << "jointL5Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5 << theta6Cur;
+    */
 }
 void MainWindow::jointL6Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2159,11 +2141,13 @@ void MainWindow::jointL6Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6 = MyThread::getInstance()->jointValueCur[8] - jointSpinBox6->value();
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
     qDebug() << "jointL6Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6;
+    */
 }
 void MainWindow::jointR1Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2174,11 +2158,13 @@ void MainWindow::jointR1Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
     qDebug() << "jointR1Clicked" << xCur << yCur << thCur << theta1 << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointR2Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2189,11 +2175,13 @@ void MainWindow::jointR2Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
     qDebug() << "jointR2Clicked" << xCur << yCur << thCur << theta1Cur << theta2 << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointR3Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2204,11 +2192,13 @@ void MainWindow::jointR3Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
     qDebug() << "jointR3Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3 << theta4Cur << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointR4Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2219,11 +2209,13 @@ void MainWindow::jointR4Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
     qDebug() << "jointR4Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4 << theta5Cur << theta6Cur;
+    */
 }
 void MainWindow::jointR5Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2234,11 +2226,13 @@ void MainWindow::jointR5Clicked()
     double theta5 = MyThread::getInstance()->jointValueCur[7]  + jointSpinBox5->value();
     double theta6Cur = MyThread::getInstance()->jointValueCur[8];
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
     qDebug() << "jointR5Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5 << theta6Cur;
+    */
 }
 void MainWindow::jointR6Clicked()
 {
+    /*
     double xCur = MyThread::getInstance()->jointValueCur[0];
     double yCur = MyThread::getInstance()->jointValueCur[1];
     double thCur = MyThread::getInstance()->jointValueCur[2];
@@ -2249,8 +2243,9 @@ void MainWindow::jointR6Clicked()
     double theta5Cur = MyThread::getInstance()->jointValueCur[7];
     double theta6 = MyThread::getInstance()->jointValueCur[8] + jointSpinBox6->value();
 
-    Communication::getInstance()->sendControlInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
+    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
     qDebug() << "jointR6Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6;
+    */
 }
 
 // 关节复位槽函数定义
@@ -2258,7 +2253,9 @@ void MainWindow::resetButtonClicked()
 {
     // 六自由度机械臂复位？ or  机械臂+全向车复位？
     // 暂定为情况1
-    Communication::getInstance()->sendControlInstruction(0,0,0,0,0,0,0,0,0);
+    double resetPos[9] = {0,0,0,0,0,0,0,0,0};
+
+    Communication::getInstance()->SendInstruction(resetPos);
     qDebug() << "jointReset";
 }
 
