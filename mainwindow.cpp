@@ -1908,15 +1908,15 @@ void MainWindow::readReceiveRecordFun()
 void MainWindow::pointToPoint()
 {
     // 点动目标值设定(绝对位置)
-    double terminalPos[6] = {0};
-    terminalPos[0] = toolSetSpinBoxX->value();
-    terminalPos[1] = toolSetSpinBoxY->value();
-    terminalPos[2] = toolSetSpinBoxZ->value();
-    terminalPos[3] = toolSetSpinBoxRx->value();
-    terminalPos[4] = toolSetSpinBoxRy->value();
-    terminalPos[5] = toolSetSpinBoxRz->value();
+    double terminalPos[9] = {0};
+    terminalPos[3] = toolSetSpinBoxX->value();
+    terminalPos[4] = toolSetSpinBoxY->value();
+    terminalPos[5] = toolSetSpinBoxZ->value();
+    terminalPos[6] = toolSetSpinBoxRx->value();
+    terminalPos[7] = toolSetSpinBoxRy->value();
+    terminalPos[8] = toolSetSpinBoxRz->value();
 
-    Communication::getInstance()->SendInstruction(terminalPos);
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
 }
 
 // 直线轨迹函数定义
@@ -2255,7 +2255,7 @@ void MainWindow::resetButtonClicked()
     // 暂定为情况1
     double resetPos[9] = {0,0,0,0,0,0,0,0,0};
 
-    Communication::getInstance()->SendInstruction(resetPos);
+    Communication::getInstance()->SendInstruction(resetPos, 0);
     qDebug() << "jointReset";
 }
 
@@ -2263,24 +2263,20 @@ void MainWindow::resetButtonClicked()
 void MainWindow::updateInterface()
 {
    updatedataSlot();
-   jointBar1->setValue(MyThread::getInstance()->jointValueCur[0]);
-   jointBar2->setValue(MyThread::getInstance()->jointValueCur[1]);
-   jointBar3->setValue(MyThread::getInstance()->jointValueCur[2]);
-   jointBar4->setValue(MyThread::getInstance()->jointValueCur[3]);
-   jointBar5->setValue(MyThread::getInstance()->jointValueCur[4]);
-   jointBar6->setValue(MyThread::getInstance()->jointValueCur[5]);
 
+   toolDisLineEditX->setText(QString::number(MyThread::getInstance()->jointValueCur[0],10,2));
+   toolDisLineEditY->setText(QString::number(MyThread::getInstance()->jointValueCur[1],10,2));
+   toolDisLineEditZ->setText(QString::number(MyThread::getInstance()->jointValueCur[2],10,2));
+   toolDisLineEditRx->setText(QString::number(MyThread::getInstance()->jointValueCur[3],10,2));
+   toolDisLineEditRy->setText(QString::number(MyThread::getInstance()->jointValueCur[4],10,2));
+   toolDisLineEditRz->setText(QString::number(MyThread::getInstance()->jointValueCur[5],10,2));
 
-   /**  正运动学  **/
-   double terminalPos[6] = {0};
-   KinematicSolution::getInstance()->forwardFun(MyThread::getInstance()->jointValueCur, terminalPos);
-
-   toolDisLineEditX->setText(QString::number(terminalPos[0], 'f', 2));
-   toolDisLineEditY->setText(QString::number(terminalPos[1], 'f', 2));
-   toolDisLineEditZ->setText(QString::number(terminalPos[2], 'f', 2));
-   toolDisLineEditRx->setText(QString::number(terminalPos[3], 'f', 2));
-   toolDisLineEditRy->setText(QString::number(terminalPos[4], 'f', 2));
-   toolDisLineEditRz->setText(QString::number(terminalPos[5], 'f', 2));
+   jointBar1->setValue(MyThread::getInstance()->jointValueCur[6]);
+   jointBar2->setValue(MyThread::getInstance()->jointValueCur[7]);
+   jointBar3->setValue(MyThread::getInstance()->jointValueCur[8]);
+   jointBar4->setValue(MyThread::getInstance()->jointValueCur[9]);
+   jointBar5->setValue(MyThread::getInstance()->jointValueCur[10]);
+   jointBar6->setValue(MyThread::getInstance()->jointValueCur[11]);
 }
 
 

@@ -9,8 +9,10 @@ class MyThread : public QThread
 {
      Q_OBJECT
 public: 
-    // jointValueCur  数组：x y th theta1 theta2 theta3 theta4 theta5 theta6
-    double jointValueCur[9];
+    // agvValueCur(agv全向车当前位置)  数组：motor1 motor2 motor3 motor4;
+    double agvValueCur[4];
+    // jointValueCur(Kuka机械臂当前位置)  数组: posX posY posZ posA posB posC; theta1 theta2 theta3 theta4 theta5 theta6;PointNum
+    double jointValueCur[13];
     void stop();
 
     static MyThread* getInstance()

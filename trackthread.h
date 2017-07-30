@@ -1,5 +1,6 @@
 #ifndef TRACKTHREAD_H
 #define TRACKTHREAD_H
+#include <QThread>
 
 
 class TrackThread : public QThread

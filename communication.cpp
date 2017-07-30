@@ -2,6 +2,8 @@
 #include <QDebug>
 #include <QSerialPort>
 #include <QSerialPortInfo>
+#include <QtXml>
+#include <QDomDocument>
 
 #include "mainwindow.h"
 
@@ -108,13 +110,55 @@ void Communication::CommunicationClose()
     SerialClose();
 }
 
-
-bool Communication::SendInstruction(double* sendArray)
+// 发送数组 double sendArray[6]: agv_x,agv_y,agv_th,posX,posY,posZ,posA,posB,posC;
+bool Communication::SendInstruction(double* sendArray, int commander)
 {
-    QString str1 = "Serial testing...";
-    QString str2 = "Tcp testing...";
+    // 创建KUKA机器人通信的XML文本
+    QDomDocument doc;
+    QDomElement root = doc.createElement(QString("Robot"));
+    doc.appendChild(root);
 
-    if((-1!=SerialWrite(str1.toLatin1())) && (-1 != TcpWrite(str2.toLatin1())))
+    QDomElement posX = doc.createElement(QString("RPosX"));
+    QDomElement posY = doc.createElement(QString("RPosY"));
+    QDomElement posZ = doc.createElement(QString("RPosZ"));
+    QDomElement posA = doc.createElement(QString("RPosA"));
+    QDomElement posB = doc.createElement(QString("RPosB"));
+    QDomElement posC = doc.createElement(QString("RPosC"));
+    QDomElement command = doc.createElement(QString("RCommand"));
+
+
+    QDomText text;
+
+    text = doc.createTextNode(QString::number(sendArray[3],10,2));
+    posX.appendChild(text);
+    text = doc.createTextNode(QString::number(sendArray[4],10,2));
+    posY.appendChild(text);
+    text = doc.createTextNode(QString::number(sendArray[5],10,2));
+    posZ.appendChild(text);
+    text = doc.createTextNode(QString::number(sendArray[6],10,2));
+    posA.appendChild(text);
+    text = doc.createTextNode(QString::number(sendArray[7],10,2));
+    posB.appendChild(text);
+    text = doc.createTextNode(QString::number(sendArray[8],10,2));
+    posC.appendChild(text);
+    text = doc.createTextNode(QString::number(commander));
+    command.appendChild(text);
+
+
+    root.appendChild(posX);
+    root.appendChild(posY);
+    root.appendChild(posZ);
+    root.appendChild(posA);
+    root.appendChild(posB);
+    root.appendChild(posC);
+    root.appendChild(command);
+
+    QString kukaXmlStr = doc.toString();
+
+    // AGV全向车发送指令
+    QString str1 = "Serial testing...";
+
+    if((-1!=SerialWrite(str1.toLatin1())) && (-1 != TcpWrite(kukaXmlStr.toLatin1())))
     {
         qDebug() << "send Message test....";
         return true;

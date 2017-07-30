@@ -4,9 +4,10 @@
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QString>
-#include<QtNetwork/QAbstractSocket>
+#include <QtNetwork/QAbstractSocket>
 #include <QtNetwork/QTcpSocket>
 #include <QTcpServer>
+
 
 class Communication
 {
@@ -52,7 +53,7 @@ public:
 
     /** 通信主要接口函数  **/
     // 发送数组 double sendArray[6]: agv_x,agv_y,agv_th,posX,posY,posZ,posA,posB,posC;
-    bool SendInstruction(double* sendArray);
+    bool SendInstruction(double* sendArray, int command);
     // 接受数组 double receiveArray[15]:agv_x,agv_y,agv_th,theta1,theta2,theta3,theta4,theta5,theta6,posX,posY,posZ,posA,posB,posC;
     int ReceiveInstruction(double* receiveArray);
 
