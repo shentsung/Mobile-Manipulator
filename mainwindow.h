@@ -48,6 +48,8 @@
 #include "mythread.h"
 #include <QTimer>
 
+#include "excutethread.h"
+
 //按钮大小宏定义
 #define B_S_W 144  //按钮宽度
 #define B_S_H 50   //按钮高度
@@ -448,7 +450,6 @@ private slots:
     void updateInterface();
 
     // 插补子线程释放槽函数
-    void destroyTrackThread();
 
 /**  全局变量-控制系统通信相关  **/
 public:
@@ -465,8 +466,12 @@ public:
     static QHostAddress ipAddress;
     static int portNum;
 
+    // 执行标志位
+    static bool excuteFlag;
+
 /**  全局变量 - 轨迹插补相关(直线、圆弧)   **/
-    static double jointsArray[900];
+    static double jointsArray[10][9];
+
 };
 
 #endif // MAINWINDOW_H

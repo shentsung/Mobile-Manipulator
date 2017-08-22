@@ -62,8 +62,6 @@ private:
     Communication();
     ~Communication();
 
-
-
 /**  成员变量  **/
 private:
     static Communication* singleton;

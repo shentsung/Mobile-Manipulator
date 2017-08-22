@@ -44,7 +44,7 @@
 
 #include "communication.h"
 
-#include "trackthread.h"
+#include "excutethread.h"
 
 // 编译时未报错，但生成的程序中文乱码
 #if _MSC_VER >= 1600
@@ -59,13 +59,15 @@ int MainWindow::dataBitsIndex = 3;
 int MainWindow::parityIndex = 2;
 int MainWindow::stopBitsIndex = 0;
 // Tcp 通信
-int MainWindow::portNum = 6666;
-QHostAddress MainWindow::ipAddress = QHostAddress("192.168.1.24");
+int MainWindow::portNum = 54600;
+QHostAddress MainWindow::ipAddress = QHostAddress("192.168.100.10");
 
 // 通信状态标志位
 bool MainWindow::communicationState = false;
 
-double MainWindow::jointsArray[900] = {0};
+double MainWindow::jointsArray[10][9] = {0};
+
+bool MainWindow::excuteFlag = false;
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -109,6 +111,8 @@ MainWindow::MainWindow(QWidget *parent) :
     // 车臂系统轨迹规划相关成员变量初始化
     velocityValue = 0;
     MyThread::getInstance()->start();
+
+    //ExcuteThread::getInstance_Test()->start();
 
     // 运动学解算初始化，加载MCR
     KinematicSolution::getInstance();
@@ -451,7 +455,7 @@ void MainWindow::menuPageInitialize()
      ipLabel->setText(tr("IP地址:"));
      ipLabel->setFont(labelFont);
      ipLineEdit = new QLineEdit();
-     ipLineEdit->setText("192.168.1.24");
+     ipLineEdit->setText("192.168.100.10");
      ipLineEdit->setFont(lineEditFont);
      QHBoxLayout *ipLayout = new QHBoxLayout();
      ipLayout->addSpacing(150);
@@ -465,7 +469,7 @@ void MainWindow::menuPageInitialize()
      portLabel->setText(tr("端口号:"));
      portLabel->setFont(labelFont);
      portLineEdit = new QLineEdit();
-     portLineEdit->setText("6666");
+     portLineEdit->setText("54600");
      portLineEdit->setFont(lineEditFont);
 
      QHBoxLayout *portLayout = new QHBoxLayout();
@@ -899,16 +903,16 @@ void MainWindow::menuPageInitialize()
      jointBar6->setStyleSheet("QProgressBar::chunk{background-color: #05B8CC;} QProgressBar{border:2px solid grey; border-radius:5px; background-color: #FFFFFF;}");
 
 
-     jointBar1->setRange(-100, 100);
-     jointBar2->setRange(-100, 100);
-     jointBar3->setRange(-100, 100);
-     jointBar4->setRange(-100, 100);
-     jointBar5->setRange(-100, 100);
-     jointBar6->setRange(-100, 100);
+     jointBar1->setRange(-170, 170);
+     jointBar2->setRange(-190, 45);
+     jointBar3->setRange(-120, 156);
+     jointBar4->setRange(-185, 185);
+     jointBar5->setRange(-120, 120);
+     jointBar6->setRange(-350, 350);
 
      jointBar1->setValue(0);
-     jointBar2->setValue(0);
-     jointBar3->setValue(0);
+     jointBar2->setValue(-90);
+     jointBar3->setValue(90);
      jointBar4->setValue(0);
      jointBar5->setValue(0);
      jointBar6->setValue(0);
@@ -1207,6 +1211,27 @@ void MainWindow::menuPageInitialize()
      toolSetSpinBoxRx->setAlignment(Qt::AlignRight);
      toolSetSpinBoxRy->setAlignment(Qt::AlignRight);
      toolSetSpinBoxRz->setAlignment(Qt::AlignRight);
+
+     // 参数范围设定 ===>当前设定为关节范围
+     toolSetSpinBoxX->setMaximum(-170);
+     toolSetSpinBoxX->setMaximum(170);
+     toolSetSpinBoxY->setMaximum(-190);
+     toolSetSpinBoxY->setMaximum(45);
+     toolSetSpinBoxZ->setMaximum(-120);
+     toolSetSpinBoxZ->setMaximum(156);
+     toolSetSpinBoxRx->setMaximum(-185);
+     toolSetSpinBoxRx->setMaximum(185);
+     toolSetSpinBoxRy->setMaximum(-120);
+     toolSetSpinBoxRy->setMaximum(120);
+     toolSetSpinBoxRz->setMaximum(-350);
+     toolSetSpinBoxRz->setMaximum(350);
+
+     toolSetSpinBoxX->setValue(0);
+     toolSetSpinBoxY->setValue(-90);
+     toolSetSpinBoxZ->setValue(90);
+     toolSetSpinBoxRx->setValue(0);
+     toolSetSpinBoxRy->setValue(0);
+     toolSetSpinBoxRz->setValue(0);
 
      /*
      toolSetLineEditX->setText("0.00");
@@ -1909,6 +1934,7 @@ void MainWindow::pointToPoint()
 {
     // 点动目标值设定(绝对位置)
     double terminalPos[9] = {0};
+
     terminalPos[3] = toolSetSpinBoxX->value();
     terminalPos[4] = toolSetSpinBoxY->value();
     terminalPos[5] = toolSetSpinBoxZ->value();
@@ -1922,34 +1948,73 @@ void MainWindow::pointToPoint()
 // 直线轨迹函数定义
 void MainWindow::straightLine()
 {
-    // 直线插补关节目标位置(相对 Vs 绝对) ----->进一步商议
-    double terminalPos[6] = {0};
-    terminalPos[0] = toolSetSpinBoxX->value();
-    terminalPos[1] = toolSetSpinBoxY->value();
-    terminalPos[2] = toolSetSpinBoxZ->value();
-    terminalPos[3] = toolSetSpinBoxRx->value();
-    terminalPos[4] = toolSetSpinBoxRy->value();
-    terminalPos[5] = toolSetSpinBoxRz->value();
+    // 直线插补关节目标位置(绝对)
+    // double terminalPos[10][9] = {0};
+
+    jointsArray[0][3] = toolSetSpinBoxX->value();
+    jointsArray[0][4] = toolSetSpinBoxY->value();
+    jointsArray[0][5] = toolSetSpinBoxZ->value();
+    jointsArray[0][6] = toolSetSpinBoxRx->value();
+    jointsArray[0][7] = toolSetSpinBoxRy->value();
+    jointsArray[0][8] = toolSetSpinBoxRz->value();
+
+    for(int i=1; i<10; i++)
+    {
+        jointsArray[i][3] = jointsArray[i-1][3] + 3;
+        jointsArray[i][4] = jointsArray[i-1][4] + 3;
+        jointsArray[i][5] = jointsArray[i-1][5] + 3;
+        jointsArray[i][6] = jointsArray[i-1][6] + 3;
+        jointsArray[i][7] = jointsArray[i-1][7] + 3;
+        jointsArray[i][8] = jointsArray[i-1][8] + 3;
+    }
+
+
+
+
+
+
+    //int index = 0;
+
     /*
-    qDebug()<<terminalPos[0]
-            <<terminalPos[1]
-            <<terminalPos[2]
-            <<terminalPos[3]
-            <<terminalPos[4]
-            <<terminalPos[5];
-    qDebug()<<MyThread::getInstance()->jointValueCur[0]
-            <<MyThread::getInstance()->jointValueCur[1]
-            <<MyThread::getInstance()->jointValueCur[2]
-            <<MyThread::getInstance()->jointValueCur[3]
-            <<MyThread::getInstance()->jointValueCur[4]
-            <<MyThread::getInstance()->jointValueCur[5]
-            <<MyThread::getInstance()->jointValueCur[6]
-            <<MyThread::getInstance()->jointValueCur[7]
-            <<MyThread::getInstance()->jointValueCur[8];
+    for(int i=0; i<10; i++)
+    {
+        Communication::getInstance()->SendInstruction(terminalPos[i], 1);
+    }
     */
 
+
+    /*
+    while(index < 10)
+    {
+        if(index == MyThread::getInstance()->jointValueCur[12])
+        {
+            Communication::getInstance()->SendInstruction(terminalPos[index], 1);
+            index++;
+        }
+    }
+
+
+ */
+    for(int i=0; i<10; i++){
+        qDebug()<<jointsArray[i][3]
+                <<jointsArray[i][4]
+                <<jointsArray[i][5]
+                <<jointsArray[i][6]
+                <<jointsArray[i][7]
+                <<jointsArray[i][8];
+    }
+
+    MainWindow::excuteFlag = true;
+
+    //ExcuteThread::getInstance()->start();
+
+
+
+
+/*
+
     // 解算关节序列----->解算结果---->数组的存储方式需重点关注||关注调用技巧
-    KinematicSolution::getInstance()->lineInterpolationFun(terminalPos, MyThread::getInstance()->jointValueCur, MainWindow::jointsArray);
+    //KinematicSolution::getInstance()->lineInterpolationFun(terminalPos, MyThread::getInstance()->jointValueCur, MainWindow::jointsArray);
     /*
     for(int i=0; i<100; i++)
         qDebug()<<MainWindow::jointsArray[100*0+i]
@@ -1963,15 +2028,8 @@ void MainWindow::straightLine()
                 <<MainWindow::jointsArray[100*8+i];
     */
     // 关联插补线程槽函数---->轨迹插补之后的线程释放
-    //TrackThread::getInstance();
-    //TrackThread* pTrack = TrackThread::getInstance();
-    //QObject::connect(pTrack, SIGNAL(trackComplete()), this, SLOT(destroyTrackThread()));
 }
 
-void MainWindow::destroyTrackThread()
-{
-    ;
-}
 // 圆弧轨迹函数定义
 void MainWindow::circularPath()
 {
@@ -2045,207 +2103,219 @@ void MainWindow::stopRoutine()
 // 单一关节微调槽函数定义
 void MainWindow::jointL1Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1 = MyThread::getInstance()->jointValueCur[3] - jointSpinBox1->value();
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
-    qDebug() << "jointL1Clicked" << xCur << yCur << thCur << theta1 << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6] - jointSpinBox1->value();
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointL2Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2 = MyThread::getInstance()->jointValueCur[4] - jointSpinBox2->value();
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
-    qDebug() << "jointL2Clicked" << xCur << yCur << thCur << theta1Cur << theta2 << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7] - jointSpinBox2->value();
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointL3Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3 = MyThread::getInstance()->jointValueCur[5] - jointSpinBox3->value();
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
-    qDebug() << "jointL3Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3 << theta4Cur << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8] - jointSpinBox3->value();
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointL4Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4 = MyThread::getInstance()->jointValueCur[6] - jointSpinBox4->value();
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
-    qDebug() << "jointL4Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4 << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9] - jointSpinBox4->value();
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointL5Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5 = MyThread::getInstance()->jointValueCur[7] - jointSpinBox5->value();
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
-    qDebug() << "jointL5Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5 << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10] - jointSpinBox5->value();
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointL6Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6 = MyThread::getInstance()->jointValueCur[8] - jointSpinBox6->value();
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
-    qDebug() << "jointL6Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11] - jointSpinBox6->value();
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointR1Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1 = MyThread::getInstance()->jointValueCur[3] + jointSpinBox1->value();
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
-    qDebug() << "jointR1Clicked" << xCur << yCur << thCur << theta1 << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6] + jointSpinBox1->value();
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointR2Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2 = MyThread::getInstance()->jointValueCur[4] + jointSpinBox2->value();
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2, theta3Cur, theta4Cur, theta5Cur, theta6Cur);
-    qDebug() << "jointR2Clicked" << xCur << yCur << thCur << theta1Cur << theta2 << theta3Cur << theta4Cur << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7] + jointSpinBox2->value();
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointR3Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3 = MyThread::getInstance()->jointValueCur[5] + jointSpinBox3->value();
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3, theta4Cur, theta5Cur, theta6Cur);
-    qDebug() << "jointR3Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3 << theta4Cur << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8] + jointSpinBox3->value();
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointR4Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4 = MyThread::getInstance()->jointValueCur[6] + jointSpinBox4->value();
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4, theta5Cur, theta6Cur);
-    qDebug() << "jointR4Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4 << theta5Cur << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9] + jointSpinBox4->value();
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointR5Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5 = MyThread::getInstance()->jointValueCur[7]  + jointSpinBox5->value();
-    double theta6Cur = MyThread::getInstance()->jointValueCur[8];
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5, theta6Cur);
-    qDebug() << "jointR5Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5 << theta6Cur;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10] + jointSpinBox5->value();
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11];
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 void MainWindow::jointR6Clicked()
 {
-    /*
-    double xCur = MyThread::getInstance()->jointValueCur[0];
-    double yCur = MyThread::getInstance()->jointValueCur[1];
-    double thCur = MyThread::getInstance()->jointValueCur[2];
-    double theta1Cur = MyThread::getInstance()->jointValueCur[3];
-    double theta2Cur = MyThread::getInstance()->jointValueCur[4];
-    double theta3Cur = MyThread::getInstance()->jointValueCur[5];
-    double theta4Cur = MyThread::getInstance()->jointValueCur[6];
-    double theta5Cur = MyThread::getInstance()->jointValueCur[7];
-    double theta6 = MyThread::getInstance()->jointValueCur[8] + jointSpinBox6->value();
+    double terminalPos[9] = {0};
 
-    Communication::getInstance()->SendInstruction(xCur, yCur, thCur, theta1Cur, theta2Cur, theta3Cur, theta4Cur, theta5Cur, theta6);
-    qDebug() << "jointR6Clicked" << xCur << yCur << thCur << theta1Cur << theta2Cur << theta3Cur << theta4Cur << theta5Cur << theta6;
-    */
+    terminalPos[0] = MyThread::getInstance()->agvValueCur[4];
+    terminalPos[1] = MyThread::getInstance()->agvValueCur[5];
+    terminalPos[2] = MyThread::getInstance()->agvValueCur[6];
+
+    terminalPos[3] = MyThread::getInstance()->jointValueCur[6];
+    terminalPos[4] = MyThread::getInstance()->jointValueCur[7];
+    terminalPos[5] = MyThread::getInstance()->jointValueCur[8];
+    terminalPos[6] = MyThread::getInstance()->jointValueCur[9];
+    terminalPos[7] = MyThread::getInstance()->jointValueCur[10];
+    terminalPos[8] = MyThread::getInstance()->jointValueCur[11] + jointSpinBox6->value();
+
+    Communication::getInstance()->SendInstruction(terminalPos, 1);
+    qDebug() << "jointL1Clicked" << terminalPos[3] << terminalPos[4] << terminalPos[5] << terminalPos[6] << terminalPos[7] << terminalPos[8] << terminalPos[9] << terminalPos[10] << terminalPos[11];
 }
 
 // 关节复位槽函数定义
@@ -2253,9 +2323,9 @@ void MainWindow::resetButtonClicked()
 {
     // 六自由度机械臂复位？ or  机械臂+全向车复位？
     // 暂定为情况1
-    double resetPos[9] = {0,0,0,0,0,0,0,0,0};
+    double resetPos[9] = {0,0,0,0,-90,90,0,0,0};
 
-    Communication::getInstance()->SendInstruction(resetPos, 0);
+    Communication::getInstance()->SendInstruction(resetPos, 1);
     qDebug() << "jointReset";
 }
 
@@ -2278,5 +2348,3 @@ void MainWindow::updateInterface()
    jointBar5->setValue(MyThread::getInstance()->jointValueCur[10]);
    jointBar6->setValue(MyThread::getInstance()->jointValueCur[11]);
 }
-
-

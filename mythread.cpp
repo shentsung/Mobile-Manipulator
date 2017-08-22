@@ -14,31 +14,37 @@ MyThread::MyThread()
     receivedArray.clear();
     for(int i=0; i<13; i++)
         jointValueCur[i] = 0;
-    for(int i=0; i<4; i++)
+    for(int i=0; i<7; i++)
         agvValueCur[i] = 0;
 }
 
 // 线程循环体主程序
 void MyThread::run()
 {
+
     while(!stopped)
     {
         if(MainWindow::communicationState)
         {
 
+            // 检测485、TCP/IP 端口数据接收情况
             int serialReceivedNum = Communication::getInstance()->SerialAvailableBytes();
             int tcpReceivedNum = Communication::getInstance()->TcpAvailableBytes();
+
+            /** 接受并处理来自AGV全向车的状态信息 **/
             if(serialReceivedNum >= 10)
                 qDebug() << Communication::getInstance()->SerialRead();
+
+            /** 接受并处理来自KUKA工业机器人的XML文本信息 **/
             if(tcpReceivedNum >= 300)
             {
-                // 接受XML文本
+
                 QString receicedXml = Communication::getInstance()->TcpReceive();
-                //qDebug() << receicedXml;
-                // XML文本解析，提取重要数据  ====>如何校验接受指令的正确性？
+                // XML文本解析，提取重要数据    忽略XML异常文本
+                // 处理速度测试结果：0.001s
                 QDomDocument doc;
                 if(!doc.setContent(receicedXml)){
-                    qDebug() << tr("关联内容");
+                    // 结束本次循环并进入下一次循环
                     continue;
                 }
 
@@ -56,16 +62,33 @@ void MyThread::run()
                     }
                 }
             }
+
+
+            // 发送进程
+            if(MainWindow::excuteFlag)
+            {
+                static int index = 0;
+                if(1)
+                {
+                    Communication::getInstance()->SendInstruction(MainWindow::jointsArray[index], 1);
+                    sleep(1);
+                    index++;
+                    if(index == 10)
+                    {
+                       MainWindow::excuteFlag = false;
+                       index = 0;
+                    }
+                    qDebug()<<MainWindow::jointsArray[index];
+                }
+            }
+
+
+
         }
+        stopped = false;
     }
-    stopped = false;
 }
 
-
-void MyThread::stop()
-{
-    stopped = true;
-}
 
 
 

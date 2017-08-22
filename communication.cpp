@@ -65,11 +65,11 @@ QByteArray Communication::SerialRead()
 bool Communication::TcpInit()
 {
     tcpSocket = new QTcpSocket();
-
     tcpSocket->abort();
 
     // ip地址   端口号
-    tcpSocket->connectToHost(QHostAddress::LocalHost,MainWindow::portNum);
+    //tcpSocket->connectToHost(MainWindow::ipAddress, MainWindow::portNum);
+    tcpSocket->connectToHost(QHostAddress::LocalHost, MainWindow::portNum);
     return true;
 }
 
@@ -110,12 +110,13 @@ void Communication::CommunicationClose()
     SerialClose();
 }
 
-// 发送数组 double sendArray[6]: agv_x,agv_y,agv_th,posX,posY,posZ,posA,posB,posC;
+// 发送数组 double sendArray[9]: agv_x, agv_y, agv_th, posX, posY, posZ, posA, posB, posC;
+// commander 控制指令：待定义
 bool Communication::SendInstruction(double* sendArray, int commander)
 {
     // 创建KUKA机器人通信的XML文本
     QDomDocument doc;
-    QDomElement root = doc.createElement(QString("Robot"));
+    QDomElement root = doc.createElement(QString("UpperComputer"));
     doc.appendChild(root);
 
     QDomElement posX = doc.createElement(QString("RPosX"));
@@ -126,9 +127,7 @@ bool Communication::SendInstruction(double* sendArray, int commander)
     QDomElement posC = doc.createElement(QString("RPosC"));
     QDomElement command = doc.createElement(QString("RCommand"));
 
-
     QDomText text;
-
     text = doc.createTextNode(QString::number(sendArray[3],10,2));
     posX.appendChild(text);
     text = doc.createTextNode(QString::number(sendArray[4],10,2));
@@ -144,7 +143,6 @@ bool Communication::SendInstruction(double* sendArray, int commander)
     text = doc.createTextNode(QString::number(commander));
     command.appendChild(text);
 
-
     root.appendChild(posX);
     root.appendChild(posY);
     root.appendChild(posZ);
@@ -158,7 +156,8 @@ bool Communication::SendInstruction(double* sendArray, int commander)
     // AGV全向车发送指令
     QString str1 = "Serial testing...";
 
-    if((-1!=SerialWrite(str1.toLatin1())) && (-1 != TcpWrite(kukaXmlStr.toLatin1())))
+    //if((-1!=SerialWrite(str1.toLatin1())) && (-1 != TcpWrite(kukaXmlStr.toLatin1())))
+    if(-1 != TcpWrite(kukaXmlStr.toLatin1()))
     {
         qDebug() << "send Message test....";
         return true;

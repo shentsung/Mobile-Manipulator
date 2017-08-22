@@ -22,7 +22,7 @@ SOURCES += main.cpp\
     kinematicsolution.cpp \
     mythread.cpp \
     communication.cpp \
-    trackthread.cpp
+    excutethread.cpp
 
 HEADERS  += mainwindow.h \
          QRoundProgressBar.h \
@@ -34,7 +34,7 @@ HEADERS  += mainwindow.h \
     mythread.h \
     communication.h \
     forward.h \
-    trackthread.h
+    excutethread.h
 
 
 RESOURCES += \

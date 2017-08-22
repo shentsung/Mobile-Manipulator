@@ -14,7 +14,7 @@ MyThread::MyThread()
     receivedArray.clear();
     for(int i=0; i<13; i++)
         jointValueCur[i] = 0;
-    for(int i=0; i<4; i++)
+    for(int i=0; i<7; i++)
         agvValueCur[i] = 0;
 }
 
@@ -29,24 +29,24 @@ void MyThread::run()
             // 检测485、TCP/IP 端口数据接收情况
             int serialReceivedNum = Communication::getInstance()->SerialAvailableBytes();
             int tcpReceivedNum = Communication::getInstance()->TcpAvailableBytes();
-           
+
             /** 接受并处理来自AGV全向车的状态信息 **/
             if(serialReceivedNum >= 10)
                 qDebug() << Communication::getInstance()->SerialRead();
-            
-            
+
             /** 接受并处理来自KUKA工业机器人的XML文本信息 **/
             if(tcpReceivedNum >= 300)
             {
+
                 QString receicedXml = Communication::getInstance()->TcpReceive();
-                // XML文本解析，提取重要数据    忽略XML异常文本  
+                // XML文本解析，提取重要数据    忽略XML异常文本
                 // 处理速度测试结果：0.001s
                 QDomDocument doc;
                 if(!doc.setContent(receicedXml)){
-                    qDebug() << tr("关联内容");
                     // 结束本次循环并进入下一次循环
                     continue;
                 }
+
                 QDomElement docElem = doc.documentElement();
                 QDomNodeList list = docElem.childNodes();
 
@@ -62,15 +62,10 @@ void MyThread::run()
                 }
             }
         }
+        stopped = false;
     }
-    stopped = false;
 }
 
-
-void MyThread::stop()
-{
-    stopped = true;
-}
 
 
 
